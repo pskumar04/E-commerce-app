@@ -95,7 +95,7 @@ const SupplierDashboard = () => {
   const fetchProducts = async () => {
     try {
       const token = getAuthToken();
-      const response = await axios.get('${config.apiUrl}/api/products', {
+      const response = await axios.get(`${config.apiUrl}/api/products`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -130,7 +130,7 @@ const SupplierDashboard = () => {
   const fetchOrders = async () => {
     try {
       const token = getAuthToken();
-      const response = await axios.get('${config.apiUrl}/api/orders/supplier-orders', {
+      const response = await axios.get(`${config.apiUrl}/api/orders/supplier-orders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setOrders(response.data);
@@ -145,7 +145,7 @@ const SupplierDashboard = () => {
   const fetchEarningsSummary = async () => {
     try {
       const token = getAuthToken();
-      const response = await axios.get('${config.apiUrl}/api/orders/supplier/earnings-summary', {
+      const response = await axios.get(`${config.apiUrl}/api/orders/supplier/earnings-summary`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -258,7 +258,7 @@ const SupplierDashboard = () => {
         });
         toast.success('Product updated successfully');
       } else {
-        await axios.post('${config.apiUrl}/api/products', formData, {
+        await axios.post(`${config.apiUrl}/api/products`, formData, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'

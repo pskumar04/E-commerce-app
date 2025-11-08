@@ -13,7 +13,7 @@ const Home = () => {
 
   const fetchBestSellers = async () => {
     try {
-      const response = await axios.get('${config.apiUrl}/api/products?bestseller=true&limit=8');
+      const response = await axios.get(`${config.apiUrl}/api/products?bestseller=true&limit=8`);
       setBestSellers(response.data.products);
     } catch (error) {
       console.error('Error fetching best sellers:', error);

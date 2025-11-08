@@ -33,7 +33,7 @@ export const CartProvider = ({ children }) => {
       }
 
       console.log('Fetching cart with token...');
-      const response = await axios.get('${config.apiUrl}/api/cart', {
+      const response = await axios.get(`${config.apiUrl}/api/cart`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -77,7 +77,7 @@ export const CartProvider = ({ children }) => {
         return false;
       }
 
-      const response = await axios.post('${config.apiUrl}/api/cart/add', {
+      const response = await axios.post(`${config.apiUrl}/api/cart/add`, {
         productId: product._id,
         quantity,
         size,
@@ -152,7 +152,7 @@ export const CartProvider = ({ children }) => {
   const clearCart = async () => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete('${config.apiUrl}/api/cart/clear', {
+      await axios.delete(`${config.apiUrl}/api/cart/clear`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCart([]);

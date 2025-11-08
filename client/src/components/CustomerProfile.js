@@ -39,7 +39,7 @@ const CustomerProfile = () => {
         return;
       }
 
-      const response = await axios.get('${config.apiUrl}/api/auth/profile', {
+      const response = await axios.get(`${config.apiUrl}/api/auth/profile`, {
         headers: { 
           Authorization: `Bearer ${token}` 
         }
@@ -104,7 +104,7 @@ const CustomerProfile = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        '${config.apiUrl}/api/auth/profile', 
+        `${config.apiUrl}/api/auth/profile`, 
         profile,
         {
           headers: { 
@@ -156,7 +156,7 @@ const CustomerProfile = () => {
     }
 
     try {
-      await axios.put('${config.apiUrl}/api/auth/change-password', {
+      await axios.put(`${config.apiUrl}/api/auth/change-password`, {
         currentPassword,
         newPassword
       });

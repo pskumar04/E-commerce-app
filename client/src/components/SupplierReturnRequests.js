@@ -15,7 +15,7 @@ const SupplierReturnRequests = () => {
 
   const fetchReturnRequests = async () => {
     try {
-      const response = await axios.get('${config.apiUrl}/api/orders/supplier/return-requests');
+      const response = await axios.get(`${config.apiUrl}/api/orders/supplier/return-requests`);
       setReturnRequests(response.data);
     } catch (error) {
       console.error('Error fetching return requests:', error);

@@ -86,7 +86,7 @@ const handlePayment = async () => {
 
     console.log('Sending order data:', orderData);
 
-    const response = await axios.post('${config.apiUrl}/api/orders', orderData, {
+    const response = await axios.post(`${config.apiUrl}/api/orders`, orderData, {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
