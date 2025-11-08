@@ -9,6 +9,18 @@ const cartRoutes = require('./routes/cart');
 dotenv.config();
 
 const app = express();
+// const cors = require('cors');
+
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'https://happycart-sigma.vercel.app',  // ✅ Add your Vercel domain
+    'https://ecommerce-backend-9aps.onrender.com'
+  ],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(cors());
@@ -26,6 +38,40 @@ app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/ratings', require('./routes/ratings'));
 app.use('/api/order-requests', require('./routes/orderRequests'));
 app.use('/api/cart', cartRoutes);
+
+// Add this before other routes for testing
+app.post('/api/auth/login', (req, res) => {
+  console.log('✅ Login API called with:', req.body);
+  
+  // Temporary response for testing
+  res.json({
+    success: true,
+    message: 'Login successful!',
+    token: 'test_jwt_token_12345',
+    user: {
+      id: '1',
+      name: 'Test User',
+      email: req.body.email,
+      role: 'customer'
+    }
+  });
+});
+
+app.post('/api/auth/register', (req, res) => {
+  console.log('✅ Register API called with:', req.body);
+  
+  res.json({
+    success: true,
+    message: 'Registration successful!',
+    token: 'test_jwt_token_12345',
+    user: {
+      id: '2',
+      name: req.body.name,
+      email: req.body.email,
+      role: req.body.role || 'customer'
+    }
+  });
+});
 
 // Health check route
 app.get('/api/health', (req, res) => {

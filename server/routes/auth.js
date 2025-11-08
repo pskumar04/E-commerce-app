@@ -9,7 +9,7 @@ router.post('/register', async (req, res) => {
   try {
     console.log('Registration request:', req.body);
     
-    const { name, email, password, mobile } = req.body;
+    const { name, email, password, role = 'customer' } = req.body;
 
     // Validation
     if (!name || !email || !password || !mobile) {
@@ -25,16 +25,13 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { mobile }] 
-    });
+    const existingUser = await User.findOne({ email });
     
     if (existingUser) {
-      if (existingUser.email === email) {
-        return res.status(400).json({ message: 'User already exists with this email' });
-      } else {
-        return res.status(400).json({ message: 'User already exists with this mobile number' });
-      }
+      return res.status(400).json({ 
+        success: false,
+        message: 'User already exists with this email' 
+      });
     }
 
     // Hash password
@@ -46,17 +43,16 @@ router.post('/register', async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      mobile,
-      role: 'customer'
+      role
     });
 
     await user.save();
 
     // Create JWT token
     const token = jwt.sign(
-      { id: user._id }, 
+      { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '30d' }
+      { expiresIn: process.env.JWT_EXPIRE }
     );
 
     // Return user data (without password)
@@ -64,12 +60,13 @@ router.post('/register', async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      mobile: user.mobile,
-      role: user.role,
-      createdAt: user.createdAt
+      // mobile: user.mobile,
+      role: user.role
+      // createdAt: user.createdAt
     };
 
     res.status(201).json({
+      success: true,
       message: 'User registered successfully',
       token,
       user: userResponse
@@ -78,6 +75,7 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ 
+      success: false,
       message: 'Server error during registration',
       error: error.message 
     });
@@ -110,15 +108,22 @@ router.post('/login', async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ 
+        success: false,
         message: 'Invalid email or password' 
       });
     }
 
     // Create JWT token
     const token = jwt.sign(
-      { id: user._id }, 
+      // { id: user._id }, 
+      { 
+        id: user._id, 
+        email: user.email,
+        role: user.role 
+      },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '30d' }
+      // { expiresIn: '30d' }
+      { expiresIn: process.env.JWT_EXPIRE }
     );
 
     // Return user data (without password)
@@ -136,6 +141,7 @@ router.post('/login', async (req, res) => {
     };
 
     res.json({
+      success: true,
       message: 'Login successful',
       token,
       user: userResponse
@@ -144,6 +150,7 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ 
+      success: false,
       message: 'Server error during login',
       error: error.message 
     });
