@@ -1,62 +1,70 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import config from './config';
 import './App.css';
-import CustomerProfile from './components/CustomerProfile';
-import ProductDetails from './components/ProductDetails';
-// import ProductDetail from './pages/ProductDetail';
-
-import Checkout from './pages/Checkout';
-import OrderSuccess from './pages/OrderSuccess';
-
-// Components
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-
-// Pages
-import Home from './pages/Home';
-import Products from './pages/Products';
-import ProductDetail from './pages/ProductDetail';
-import Cart from './pages/Cart';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import SupplierDashboard from './pages/SupplierDashboard';
-import CustomerOrders from './pages/CustomerOrders';
-
-// Context
-import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './context/CartContext';
 
 function App() {
+  const [backendStatus, setBackendStatus] = useState('checking...');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkBackendConnection();
+  }, []);
+
+  const checkBackendConnection = async () => {
+    try {
+      const response = await axios.get(`${config.apiUrl}/api/health`);
+      setBackendStatus('✅ Connected');
+      console.log('Backend response:', response.data);
+    } catch (error) {
+      setBackendStatus('❌ Failed to connect');
+      console.error('Backend connection error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="App">
+        <div style={{ padding: '50px', textAlign: 'center' }}>
+          <h1>Loading HappyCart...</h1>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <AuthProvider>
-      <CartProvider>
-        <Router>
-          <div className="App">
-            <Navbar />
-            <main>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/profile" element={<CustomerProfile />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/product/:id" element={<ProductDetails />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/order-success" element={<OrderSuccess />} />
-                <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
-                <Route path="/my-orders" element={<CustomerOrders />} />
-              </Routes>
-            </main>
-            <Footer />
-            <ToastContainer position="bottom-right" />
-          </div>
-        </Router>
-      </CartProvider>
-    </AuthProvider>
+    <div className="App">
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h1>🎉 HappyCart E-Commerce 🎉</h1>
+        <p>Frontend: <strong>✅ Deployed on Vercel</strong></p>
+        <p>Backend: <strong>{backendStatus}</strong></p>
+        <p>Backend URL: {config.apiUrl}</p>
+        
+        <div style={{ marginTop: '30px' }}>
+          <button 
+            onClick={checkBackendConnection}
+            style={{ padding: '10px 20px', margin: '5px' }}
+          >
+            Test Backend Connection
+          </button>
+          <button 
+            onClick={() => window.open(config.apiUrl, '_blank')}
+            style={{ padding: '10px 20px', margin: '5px' }}
+          >
+            Open Backend API
+          </button>
+        </div>
+
+        <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '10px' }}>
+          <h3>Next Steps:</h3>
+          <p>1. If backend shows ✅ Connected, your API is working!</p>
+          <p>2. Now you can add your actual components</p>
+          <p>3. Update all API calls to use: `{`${config.apiUrl}/api/endpoint`}`</p>
+        </div>
+      </div>
+    </div>
   );
 }
 

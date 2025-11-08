@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+// import axios from 'axios';
+import config from '../config';
 import { toast } from 'react-toastify';
 
 const CancelModal = ({ isOpen, onClose, order, onCancelSubmitted }) => {

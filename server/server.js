@@ -1,3 +1,4 @@
+// const __dirname = path.resolve();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
