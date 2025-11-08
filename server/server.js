@@ -1,4 +1,3 @@
-// const __dirname = path.resolve();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -9,41 +8,31 @@ const cartRoutes = require('./routes/cart');
 dotenv.config();
 
 const app = express();
-// const cors = require('cors');
 
+// ✅ FIXED CORS CONFIGURATION (ONLY ONCE)
 const corsOptions = {
   origin: [
     'http://localhost:3000',
-    'https://happycart-sigma.vercel.app',  // ✅ Add your Vercel domain
+    'https://happy-cart-phi.vercel.app',  // Add your current Vercel domain
+    'https://happycart-sigma.vercel.app',
     'https://ecommerce-backend-9aps.onrender.com'
   ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
 
+// ✅ USE CORS ONLY ONCE
 app.use(cors(corsOptions));
-
-// Middleware
-app.use(cors());
 app.use(express.json());
-// app.use('/uploads', express.static('uploads'));
 
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/products', require('./routes/products'));
-app.use('/api/orders', require('./routes/orders'));
-app.use('/api/suppliers', require('./routes/suppliers'));
-app.use('/api/ratings', require('./routes/ratings'));
-app.use('/api/order-requests', require('./routes/orderRequests'));
-app.use('/api/cart', cartRoutes);
-
-// Add this before other routes for testing
+// ✅ TEMPORARY TEST ROUTES - PUT THESE BEFORE OTHER ROUTES
 app.post('/api/auth/login', (req, res) => {
   console.log('✅ Login API called with:', req.body);
   
-  // Temporary response for testing
   res.json({
     success: true,
     message: 'Login successful!',
@@ -73,6 +62,17 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
+// ✅ COMMENT OUT THE AUTH ROUTES TEMPORARILY
+// app.use('/api/auth', require('./routes/auth'));
+
+// Other routes
+app.use('/api/products', require('./routes/products'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/suppliers', require('./routes/suppliers'));
+app.use('/api/ratings', require('./routes/ratings'));
+app.use('/api/order-requests', require('./routes/orderRequests'));
+app.use('/api/cart', cartRoutes);
+
 // Health check route
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -87,7 +87,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ecommerce', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/happycart', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
