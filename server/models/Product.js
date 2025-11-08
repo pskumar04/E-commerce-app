@@ -61,34 +61,13 @@ const productSchema = new mongoose.Schema({
     default: false
   },
   ratings: {
-    average: {
-      type: Number,
-      default: 0
-    },
-    count: {
-      type: Number,
-      default: 0
-    },
+    average: { type: Number, default: 0 },
+    count: { type: Number, default: 0 },
     reviews: [{
-      user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-      },
-      rating: {
-        type: Number,
-        required: true,
-        min: 1,
-        max: 5
-      },
-      comment: {
-        type: String,
-        default: '' // Changed from required to default empty string
-      },
-      createdAt: {
-        type: Date,
-        default: Date.now
-      }
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      rating: { type: Number, required: true, min: 1, max: 5 },
+      comment: { type: String, default: '' },
+      createdAt: { type: Date, default: Date.now }
     }]
   }
 }, {
