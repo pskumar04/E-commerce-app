@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import config from '../config';
 import { toast } from 'react-toastify';
 
 const CustomerProfile = () => {
@@ -38,7 +39,7 @@ const CustomerProfile = () => {
         return;
       }
 
-      const response = await axios.get('http://localhost:5000/api/auth/profile', {
+      const response = await axios.get('${config.apiUrl}/api/auth/profile', {
         headers: { 
           Authorization: `Bearer ${token}` 
         }
@@ -103,7 +104,7 @@ const CustomerProfile = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        'http://localhost:5000/api/auth/profile', 
+        '${config.apiUrl}/api/auth/profile', 
         profile,
         {
           headers: { 
@@ -155,7 +156,7 @@ const CustomerProfile = () => {
     }
 
     try {
-      await axios.put('http://localhost:5000/api/auth/change-password', {
+      await axios.put('${config.apiUrl}/api/auth/change-password', {
         currentPassword,
         newPassword
       });

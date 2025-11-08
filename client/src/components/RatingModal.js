@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import config from '../config';
 import { toast } from 'react-toastify';
 
 const RatingModal = ({ isOpen, onClose, type, targetId, targetName, onRatingSubmitted }) => {

@@ -1,6 +1,7 @@
 // components/SupplierReturnRequests.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 const SupplierReturnRequests = () => {
   const [returnRequests, setReturnRequests] = useState([]);
@@ -14,7 +15,7 @@ const SupplierReturnRequests = () => {
 
   const fetchReturnRequests = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/orders/supplier/return-requests');
+      const response = await axios.get('${config.apiUrl}/api/orders/supplier/return-requests');
       setReturnRequests(response.data);
     } catch (error) {
       console.error('Error fetching return requests:', error);
@@ -25,7 +26,7 @@ const SupplierReturnRequests = () => {
 
   const handleStatusUpdate = async (orderId, itemId, status, notes = '') => {
     try {
-      await axios.put(`http://localhost:5000/api/orders/update-item-status/${orderId}/${itemId}`, {
+      await axios.put(`${config.apiUrl}/api/orders/update-item-status/${orderId}/${itemId}`, {
         status,
         adminNotes: notes
       });

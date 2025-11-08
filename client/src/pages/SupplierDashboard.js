@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import config from '../config';
 import { toast } from 'react-toastify';
 
 const SupplierDashboard = () => {
@@ -94,7 +95,7 @@ const SupplierDashboard = () => {
   const fetchProducts = async () => {
     try {
       const token = getAuthToken();
-      const response = await axios.get('http://localhost:5000/api/products', {
+      const response = await axios.get('${config.apiUrl}/api/products', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -129,7 +130,7 @@ const SupplierDashboard = () => {
   const fetchOrders = async () => {
     try {
       const token = getAuthToken();
-      const response = await axios.get('http://localhost:5000/api/orders/supplier-orders', {
+      const response = await axios.get('${config.apiUrl}/api/orders/supplier-orders', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setOrders(response.data);
@@ -144,7 +145,7 @@ const SupplierDashboard = () => {
   const fetchEarningsSummary = async () => {
     try {
       const token = getAuthToken();
-      const response = await axios.get('http://localhost:5000/api/orders/supplier/earnings-summary', {
+      const response = await axios.get('${config.apiUrl}/api/orders/supplier/earnings-summary', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -249,7 +250,7 @@ const SupplierDashboard = () => {
       console.log('Submitting product with images...');
 
       if (editingProduct) {
-        await axios.put(`http://localhost:5000/api/products/${editingProduct._id}`, formData, {
+        await axios.put(`${config.apiUrl}/api/products/${editingProduct._id}`, formData, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
@@ -257,7 +258,7 @@ const SupplierDashboard = () => {
         });
         toast.success('Product updated successfully');
       } else {
-        await axios.post('http://localhost:5000/api/products', formData, {
+        await axios.post('${config.apiUrl}/api/products', formData, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
@@ -320,7 +321,7 @@ const SupplierDashboard = () => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
         const token = getAuthToken();
-        await axios.delete(`http://localhost:5000/api/products/${productId}`, {
+        await axios.delete(`${config.apiUrl}/api/products/${productId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Product deleted successfully');
@@ -375,7 +376,7 @@ const SupplierDashboard = () => {
         return;
       }
 
-      await axios.put(`http://localhost:5000/api/orders/${orderId}/status`, 
+      await axios.put(`${config.apiUrl}/api/orders/${orderId}/status`, 
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );

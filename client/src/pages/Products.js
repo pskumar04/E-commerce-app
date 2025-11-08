@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import config from '../config';
 import { useCart } from '../context/CartContext';
 import { toast } from 'react-toastify';
 
@@ -27,7 +28,7 @@ const Products = () => {
       if (bestseller) params.append('bestseller', bestseller);
       if (search) params.append('search', search);
 
-      const response = await axios.get(`http://localhost:5000/api/products?${params}`);
+      const response = await axios.get(`${config.apiUrl}/api/products?${params}`);
       setProducts(response.data.products || []);
     } catch (error) {
       console.error('Error fetching products:', error);

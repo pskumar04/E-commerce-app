@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import config from '../config';
 import { toast } from 'react-toastify';
 
 const ReturnModal = ({ isOpen, onClose, order, type, onRequestSubmitted }) => {
@@ -28,7 +29,7 @@ const ReturnModal = ({ isOpen, onClose, order, type, onRequestSubmitted }) => {
         [`${type}RequestDate`]: new Date()
       };
 
-      await axios.put(`http://localhost:5000/api/orders/${order._id}/items/${itemId}`, updateData);
+      await axios.put(`${config.apiUrl}/api/orders/${order._id}/items/${itemId}`, updateData);
       
       toast.success(`${type === 'return' ? 'Return' : 'Exchange'} request submitted successfully!`);
       onRequestSubmitted();

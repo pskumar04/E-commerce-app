@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import config from '../config';
 import RatingModal from '../components/RatingModal';
 import ReturnModal from '../components/ReturnModal';
 import CancelModal from '../components/CancelModal';
@@ -47,7 +48,7 @@ const CustomerOrders = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/orders/my-orders', {
+      const response = await axios.get('${config.apiUrl}/api/orders/my-orders', {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log('Orders fetched:', response.data);

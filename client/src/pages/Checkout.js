@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext'; // Import useCart
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import config from '../config';
 import { toast } from 'react-toastify';
 
 const Checkout = () => {
@@ -85,7 +86,7 @@ const handlePayment = async () => {
 
     console.log('Sending order data:', orderData);
 
-    const response = await axios.post('http://localhost:5000/api/orders', orderData, {
+    const response = await axios.post('${config.apiUrl}/api/orders', orderData, {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'

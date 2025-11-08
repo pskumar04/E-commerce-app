@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// import axios from 'axios';
+import axios from 'axios';
 import config from '../config';
 import { toast } from 'react-toastify';
 
@@ -18,7 +18,7 @@ const CancelModal = ({ isOpen, onClose, order, onCancelSubmitted }) => {
 
     setLoading(true);
     try {
-      await axios.put(`http://localhost:5000/api/orders/${order._id}/status`, { 
+      await axios.put(`${config.apiUrl}/api/orders/${order._id}/status`, { 
         status: 'cancelled',
         cancelReason: reason
       });
