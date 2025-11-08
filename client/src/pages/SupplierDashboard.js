@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import config from '../config';
 import { toast } from 'react-toastify';
+import { Navigate } from 'react-router-dom';
 
 const SupplierDashboard = () => {
   const { user } = useAuth();
@@ -401,11 +402,16 @@ const SupplierDashboard = () => {
     return 'https://via.placeholder.com/150x150?text=No+Image';
   };
 
-  if (!user || user.role !== 'supplier') {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== 'supplier') {
     return (
       <div style={{ textAlign: 'center', padding: '2rem' }}>
         <h2>Access Denied</h2>
         <p>Only suppliers can access this dashboard.</p>
+        <p>Your current role: {user.role}</p>
       </div>
     );
   }

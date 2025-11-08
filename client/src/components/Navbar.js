@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 const Navbar = () => {
+  // const { user } = useAuth();
   const { user, logout } = useAuth();
   const { getCartItemsCount } = useCart();
   const navigate = useNavigate();
@@ -45,8 +46,8 @@ const Navbar = () => {
               >
                 Hello {user?.name}
               </Link>
-              {user.role === 'supplier' && (
-                <li><Link to="/supplier-dashboard">Dashboard</Link></li>
+              {user && user.role === 'supplier' && (
+                <Link to="/supplier-dashboard">Supplier Dashboard</Link>
               )}
               {user.role === 'customer' && (
                 <li><Link to="/my-orders">My Orders</Link></li>

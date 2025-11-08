@@ -22,6 +22,27 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
+  // Add this to your AuthContext.js, inside the AuthProvider component
+  useEffect(() => {
+    const requestInterceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+    };
+  }, []);
+
   // Check if user is logged in on app start
   useEffect(() => {
     const checkLoggedIn = async () => {
@@ -168,6 +189,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setUser(null);
   };
+  const hasRole = (requiredRole) => {
+    return user && user.role === requiredRole;
+  };
 
   const value = {
     user,
@@ -175,7 +199,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
-    loading
+    loading,
+    hasRole
   };
 
   return (

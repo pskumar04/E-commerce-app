@@ -9,6 +9,10 @@ const RatingModal = ({ isOpen, onClose, type, targetId, targetName, onRatingSubm
   const [loading, setLoading] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -20,9 +24,18 @@ const RatingModal = ({ isOpen, onClose, type, targetId, targetName, onRatingSubm
     setLoading(true);
 
     try {
+      const token = getAuthToken();
+      
+      if (!token) {
+        toast.error('Please log in to submit a rating');
+        setLoading(false);
+        return;
+      }
+
+      // Use the config API URL instead of hardcoded localhost
       const endpoint = type === 'product' 
-        ? `http://localhost:5000/api/ratings/product/${targetId}`
-        : `http://localhost:5000/api/ratings/supplier/${targetId}`;
+        ? `${config.apiUrl}/api/ratings/product/${targetId}`
+        : `${config.apiUrl}/api/ratings/supplier/${targetId}`;
       
       console.log('Submitting rating to:', endpoint);
       
@@ -31,7 +44,8 @@ const RatingModal = ({ isOpen, onClose, type, targetId, targetName, onRatingSubm
         comment: comment || ''
       }, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`  // Add this line
         }
       });
 
@@ -47,7 +61,7 @@ const RatingModal = ({ isOpen, onClose, type, targetId, targetName, onRatingSubm
       console.error('Error response:', error.response);
       
       const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
+        error.response?.data?.error || 
                           'Error submitting rating. Please try again.';
       
       toast.error(errorMessage);
