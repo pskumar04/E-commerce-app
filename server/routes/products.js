@@ -1,59 +1,47 @@
 const express = require('express');
-const Product = require('../models/Product');
+const router = express.Router();
 const auth = require('../middleware/auth');
-const uploadProductImages = require('../middleware/upload');
-const fs = require('fs');
+const Product = require('../models/Product');
+const multer = require('multer');
 const path = require('path');
 
-const router = express.Router();
-
-// Get all products with filtering
-router.get('/', async (req, res) => {
-  try {
-    const { category, bestseller, search, page = 1, limit = 12 } = req.query;
-    
-    let filter = {};
-    
-    if (category && category !== 'all') {
-      filter.category = category;
-    }
-    
-    if (bestseller === 'true') {
-      filter.isBestSeller = true;
-    }
-    
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const products = await Product.find(filter)
-      .populate('supplier', 'name')
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .sort({ createdAt: -1 });
-
-    const total = await Product.countDocuments(filter);
-
-    res.json({
-      products,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      total
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
   }
 });
 
-// Get single product
-// In the getProductById route, update the population:
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
+
+// Get all products
+router.get('/', async (req, res) => {
+  try {
+    const products = await Product.find().populate('supplier', 'name email');
+    res.json({ products });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add this route to get single product
 router.get('/:id', async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
-      .populate('supplier', 'name email phone address logisticsName');
+    const product = await Product.findById(req.params.id).populate('supplier', 'name email');
     
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
@@ -61,67 +49,61 @@ router.get('/:id', async (req, res) => {
     
     res.json(product);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error fetching product:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Add new product with image upload (Supplier only)
-router.post('/', auth, uploadProductImages, async (req, res) => {
+// Create new product (protected route)
+router.post('/', auth, upload.array('images', 5), async (req, res) => {
   try {
-    console.log('Product creation request:', req.body);
-    console.log('Uploaded files:', req.files);
-
-    if (req.user.role !== 'supplier') {
-      return res.status(403).json({ message: 'Only suppliers can add products' });
-    }
+    const {
+      name,
+      description,
+      price,
+      originalPrice,
+      category,
+      subcategory,
+      stock,
+      sizes,
+      colors,
+      isBestSeller,
+      supplierCost
+    } = req.body;
 
     // Validate required fields
-    const { name, description, price, originalPrice, category, subcategory, stock } = req.body;
-    
-    if (!name || !description || !price || !originalPrice || !category || !subcategory || !stock) {
-      // Clean up uploaded files if validation fails
-      if (req.files) {
-        req.files.forEach(file => {
-          fs.unlinkSync(file.path);
-        });
-      }
-      return res.status(400).json({ 
-        message: 'All fields are required: name, description, price, originalPrice, category, subcategory, stock' 
-      });
+    if (!name || !description || !price || !stock) {
+      return res.status(400).json({ message: 'Please fill all required fields' });
     }
 
-    // Get image paths
+    // Process uploaded images
     const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
 
     const product = new Product({
-      ...req.body,
+      name,
+      description,
       price: parseFloat(price),
       originalPrice: parseFloat(originalPrice),
+      category,
+      subcategory,
       stock: parseInt(stock),
-      images: images,
+      sizes: JSON.parse(sizes || '[]'),
+      colors: JSON.parse(colors || '[]'),
+      images,
+      isBestSeller: isBestSeller === 'true',
+      supplierCost: parseFloat(supplierCost || price * 0.6), // Default 40% profit margin
       supplier: req.user.id
     });
 
     await product.save();
-    console.log('Product created successfully:', product.name);
-    
     res.status(201).json(product);
   } catch (error) {
-    // Clean up uploaded files if error occurs
-    if (req.files) {
-      req.files.forEach(file => {
-        fs.unlinkSync(file.path);
-      });
-    }
-    console.error('Product creation error:', error);
-    res.status(500).json({ 
-      message: 'Error creating product', 
-      error: error.message
-    });
+    console.error('Error creating product:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Update product (Supplier only)
+// Update product (protected route)
 router.put('/:id', auth, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -130,49 +112,21 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    if (product.supplier.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to update this product' });
+    // Check if user owns the product or is admin
+    if (product.supplier.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      { new: true }
     );
 
     res.json(updatedProduct);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// Delete product (Supplier only)
-router.delete('/:id', auth, async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
-    if (product.supplier.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to delete this product' });
-    }
-
-    // Delete associated images
-    if (product.images && product.images.length > 0) {
-      product.images.forEach(imagePath => {
-        const fullPath = path.join(__dirname, '..', imagePath);
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
-        }
-      });
-    }
-
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Product deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error updating product:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

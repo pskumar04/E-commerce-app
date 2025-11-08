@@ -1,234 +1,182 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-const auth = require('../middleware/auth'); // Add this import
-
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
-};
-
-// Customer Registration
-router.post('/register/customer', [
-  body('name').trim().notEmpty().withMessage('Name is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').trim().notEmpty().withMessage('Phone number is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-], async (req, res) => {
+// User registration
+router.post('/register', async (req, res) => {
   try {
-    console.log('Customer registration request:', req.body);
+    console.log('Registration request:', req.body);
     
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
-      return res.status(400).json({ errors: errors.array() });
-    }
+    const { name, email, password, mobile } = req.body;
 
-    const { name, email, phone, whatsapp, address, password } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { phone }] 
-    });
-    
-    if (existingUser) {
-      console.log('User already exists:', { email, phone });
+    // Validation
+    if (!name || !email || !password || !mobile) {
       return res.status(400).json({ 
-        message: 'User with this email or phone already exists' 
+        message: 'Please provide name, email, password, and mobile number' 
       });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        message: 'Password must be at least 6 characters long' 
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { mobile }] 
+    });
+    
+    if (existingUser) {
+      if (existingUser.email === email) {
+        return res.status(400).json({ message: 'User already exists with this email' });
+      } else {
+        return res.status(400).json({ message: 'User already exists with this mobile number' });
+      }
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create new user
     const user = new User({
       name,
       email,
-      phone,
-      whatsapp: whatsapp || phone,
-      address,
-      password,
+      password: hashedPassword,
+      mobile,
       role: 'customer'
     });
 
     await user.save();
-    console.log('Customer registered successfully:', user.email);
 
-    const token = generateToken(user._id);
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user._id }, 
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '30d' }
+    );
+
+    // Return user data (without password)
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+      createdAt: user.createdAt
+    };
 
     res.status(201).json({
-      message: 'Customer registered successfully',
+      message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role
-      }
+      user: userResponse
     });
+
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// Supplier Registration
-// Supplier Registration
-router.post('/register/supplier', [
-  body('name').trim().notEmpty().withMessage('Name is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').trim().notEmpty().withMessage('Phone number is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('logisticsName').trim().notEmpty().withMessage('Logistics company name is required')
-], async (req, res) => {
-  try {
-    console.log('Supplier registration request received');
-    
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { name, email, phone, whatsapp, address, logisticsName, password } = req.body;
-
-    console.log('Checking for existing user...');
-    // Check if user already exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { phone }] 
-    });
-    
-    if (existingUser) {
-      console.log('User already exists with email/phone:', { email, phone });
-      return res.status(400).json({ 
-        message: 'User with this email or phone already exists' 
-      });
-    }
-
-    console.log('Creating new supplier user...');
-    const user = new User({
-      name,
-      email,
-      phone,
-      whatsapp: whatsapp || phone,
-      address,
-      password,
-      role: 'supplier',
-      logisticsName
-    });
-
-    await user.save();
-    console.log('Supplier registered successfully:', user.email);
-
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.status(201).json({
-      message: 'Supplier registered successfully',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        logisticsName: user.logisticsName
-      }
-    });
-  } catch (error) {
-    console.error('Supplier registration error details:', error);
-    
-    if (error.code === 11000) {
-      // MongoDB duplicate key error
-      return res.status(400).json({ 
-        message: 'User with this email or phone already exists' 
-      });
-    }
-    
     res.status(500).json({ 
-      message: 'Server error during registration', 
+      message: 'Server error during registration',
       error: error.message 
     });
   }
 });
 
-// Login
-router.post('/login', [
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').notEmpty().withMessage('Password is required')
-], async (req, res) => {
+// User login
+router.post('/login', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
+    console.log('Login request:', req.body);
+    
     const { email, password } = req.body;
 
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ 
+        message: 'Please provide email and password' 
+      });
+    }
+
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ 
+        message: 'Invalid email or password' 
+      });
     }
 
-    const isPasswordValid = await user.correctPassword(password, user.password);
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ 
+        message: 'Invalid email or password' 
+      });
     }
 
-    const token = generateToken(user._id);
+    // Create JWT token
+    const token = jwt.sign(
+      { id: user._id }, 
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '30d' }
+    );
+
+    // Return user data (without password)
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      mobile: user.mobile,
+      role: user.role,
+      alternateMobile: user.alternateMobile,
+      address: user.address,
+      dateOfBirth: user.dateOfBirth,
+      gender: user.gender,
+      createdAt: user.createdAt
+    };
 
     res.json({
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        address: user.address,
-        logisticsName: user.logisticsName
-      }
+      user: userResponse
     });
+
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      message: 'Server error during login',
+      error: error.message 
+    });
   }
 });
 
-// Get profile (protected route)
-router.get('/profile', auth, async (req, res) => {
+// Get user profile
+router.get('/profile', async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// Update profile (protected route)
-router.put('/profile', auth, [
-  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
-  body('phone').optional().isMobilePhone().withMessage('Valid phone number is required')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+    // For now, let's skip auth middleware to test
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
     }
 
-    const { name, phone, whatsapp, address } = req.body;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const user = await User.findById(decoded.id).select('-password');
     
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, phone, whatsapp, address },
-      { new: true, runValidators: true }
-    ).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-    res.json({
-      message: 'Profile updated successfully',
-      user
-    });
+    res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Profile error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
+});
+
+// Test route to check if auth routes are working
+router.get('/test', (req, res) => {
+  res.json({ message: 'Auth routes are working!' });
 });
 
 module.exports = router;

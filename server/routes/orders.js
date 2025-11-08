@@ -7,49 +7,186 @@ const router = express.Router();
 
 // Create new order
 // Create new order
+// Create order route
+// Create order route
 router.post('/', auth, async (req, res) => {
   try {
     const { items, shippingAddress, paymentMethod } = req.body;
     
-    let totalAmount = 0;
-    let totalSupplierEarnings = 0;
+    console.log('Creating order with data:', {
+      itemsCount: items?.length,
+      shippingAddress: !!shippingAddress,
+      paymentMethod
+    });
 
-    // Calculate totals and supplier earnings
+    // Validate required fields
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Order must contain items' });
+    }
+
+    if (!shippingAddress) {
+      return res.status(400).json({ message: 'Shipping address is required' });
+    }
+
+    let totalAmount = 0;
+    const orderItems = [];
+
+    // Process each item and verify products
     for (let item of items) {
       const product = await Product.findById(item.product);
+      
       if (!product) {
-        return res.status(404).json({ message: `Product ${item.product} not found` });
+        return res.status(400).json({ message: `Product ${item.product} not found` });
+      }
+
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ 
+          message: `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}` 
+        });
       }
 
       const itemTotal = product.price * item.quantity;
       totalAmount += itemTotal;
-      
-      // Calculate supplier earnings (price - cost) * quantity
-      const supplierEarnings = (product.price - (product.supplierCost || 0)) * item.quantity;
-      totalSupplierEarnings += supplierEarnings;
-      
-      item.price = product.price;
-      item.supplierEarnings = supplierEarnings;
+
+      orderItems.push({
+        product: item.product,
+        quantity: item.quantity,
+        price: product.price,
+        size: item.size || null,
+        color: item.color || null
+      });
     }
 
+    // Add tax and shipping
+    const tax = totalAmount * 0.18;
+    const shipping = 0; // Free shipping
+    const finalTotal = totalAmount + tax + shipping;
+
+    // Create order
     const order = new Order({
       customer: req.user.id,
-      items,
-      totalAmount,
-      totalSupplierEarnings, // Add this
+      items: orderItems,
       shippingAddress,
-      paymentMethod,
-      orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      paymentMethod: paymentMethod || 'card',
+      totalAmount: finalTotal,
+      orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      status: 'pending',
+      tracking: [
+        {
+          status: 'pending',
+          description: 'Order has been placed and is awaiting confirmation',
+          timestamp: new Date()
+        }
+      ]
     });
 
     await order.save();
-    res.status(201).json(order);
+    
+    // Update product stock
+    for (let item of items) {
+      await Product.findByIdAndUpdate(
+        item.product,
+        { $inc: { stock: -item.quantity } }
+      );
+    }
+
+    // Clear user's cart if it exists
+    try {
+      await Cart.findOneAndUpdate(
+        { user: req.user.id },
+        { items: [] }
+      );
+    } catch (cartError) {
+      console.log('Cart clearing optional - user might not have cart:', cartError.message);
+    }
+
+    console.log('Order created successfully:', order._id);
+    
+    // Populate the order with product details before sending response
+    const populatedOrder = await Order.findById(order._id)
+      .populate('items.product')
+      .populate('customer', 'name email');
+
+    res.status(201).json(populatedOrder);
   } catch (error) {
     console.error('Error creating order:', error);
+    res.status(500).json({ 
+      message: 'Server error creating order',
+      error: error.message 
+    });
+  }
+});
+
+// Get supplier orders
+router.get('/supplier-orders', auth, async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate('customer', 'name email mobile')
+      .populate('items.product');
+    
+    // Filter orders that contain products from this supplier
+    const supplierOrders = orders.filter(order => 
+      order.items.some(item => 
+        item.product && item.product.supplier && 
+        item.product.supplier.toString() === req.user.id
+      )
+    );
+
+    res.json(supplierOrders);
+  } catch (error) {
+    console.error('Error fetching supplier orders:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
+// Get supplier earnings summary
+router.get('/supplier/earnings-summary', auth, async (req, res) => {
+  try {
+    // Simple implementation - you can enhance this later
+    const orders = await Order.find().populate('items.product');
+    
+    const supplierOrders = orders.filter(order => 
+      order.items.some(item => 
+        item.product && item.product.supplier && 
+        item.product.supplier.toString() === req.user.id
+      )
+    );
+
+    let totalEarnings = 0;
+    let availableEarnings = 0;
+    let pendingEarnings = 0;
+
+    supplierOrders.forEach(order => {
+      const orderEarnings = order.items
+        .filter(item => 
+          item.product && item.product.supplier && 
+          item.product.supplier.toString() === req.user.id
+        )
+        .reduce((sum, item) => {
+          const earnings = (item.product.price - (item.product.supplierCost || 0)) * item.quantity;
+          return sum + earnings;
+        }, 0);
+
+      totalEarnings += orderEarnings;
+
+      if (order.status === 'delivered') {
+        availableEarnings += orderEarnings;
+      } else {
+        pendingEarnings += orderEarnings;
+      }
+    });
+
+    res.json({
+      totalEarnings,
+      availableEarnings,
+      pendingEarnings,
+      totalOrders: supplierOrders.length
+    });
+  } catch (error) {
+    console.error('Error fetching earnings summary:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // Get supplier earnings summary
 router.get('/supplier/earnings', auth, async (req, res) => {
@@ -256,12 +393,14 @@ router.get('/supplier/return-requests', auth, async (req, res) => {
 router.get('/my-orders', auth, async (req, res) => {
   try {
     const orders = await Order.find({ customer: req.user.id })
-      .populate('items.product', 'name images price')
+      .populate('items.product')
       .sort({ createdAt: -1 });
-
+    
+    console.log(`Found ${orders.length} orders for user ${req.user.id}`);
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

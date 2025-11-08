@@ -28,7 +28,23 @@ const Navbar = () => {
           
           {user ? (
             <>
-              <li>Hello, {user.name}</li>
+              {/* <li>Hello, {user.name}</li> */}
+              <Link 
+                to="/profile" 
+                style={{
+                  color: 'white',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '5px',
+                  transition: 'background 0.3s ease',
+                  cursor: 'pointer'
+                }}
+                onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseOut={(e) => e.target.style.background = 'transparent'}
+              >
+                Hello {user?.name}
+              </Link>
               {user.role === 'supplier' && (
                 <li><Link to="/supplier-dashboard">Dashboard</Link></li>
               )}

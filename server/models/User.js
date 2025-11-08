@@ -1,99 +1,69 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+
+// const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
+    required: [true, 'Name is required'],
     trim: true
   },
   email: {
     type: String,
-    required: true,
+    required: [true, 'Email is required'],
     unique: true,
     trim: true,
     lowercase: true
   },
-  phone: {
+  password: {
     type: String,
-    required: true,
+    required: [true, 'Password is required'],
+    minlength: 6
+  },
+  mobile: {
+    type: String,
+    required: [true, 'Mobile number is required'],
     trim: true
   },
-  whatsapp: {
+  alternateMobile: {
     type: String,
+    default: '',
     trim: true
   },
   address: {
-    street: String,
-    city: String,
-    state: String,
-    zipCode: String,
-    country: String
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    zipCode: { type: String, default: '' },
+    country: { type: String, default: 'India' }
   },
-  password: {
+  dateOfBirth: {
+    type: Date,
+    default: null
+  },
+  gender: {
     type: String,
-    required: true,
-    minlength: 6
+    enum: ['male', 'female', 'other', 'prefer-not-to-say', ''],
+    default: ''
   },
   role: {
     type: String,
-    enum: ['customer', 'supplier'],
+    enum: ['customer', 'supplier', 'admin'],
     default: 'customer'
-  },
-  logisticsName: {
-    type: String,
-    required: function() {
-      return this.role === 'supplier';
-    }
-  },
-  // Add supplier ratings
-  supplierRatings: {
-    average: {
-      type: Number,
-      default: 0
-    },
-    count: {
-      type: Number,
-      default: 0
-    },
-    reviews: [{
-      user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-      },
-      rating: {
-        type: Number,
-        required: true,
-        min: 1,
-        max: 5
-      },
-      comment: {
-        type: String,
-        default: '' // Changed from required to default empty string
-      },
-      product: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product'
-      },
-      createdAt: {
-        type: Date,
-        default: Date.now
-      }
-    }]
   }
 }, {
   timestamps: true
 });
 
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
-
-userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
-  return await bcrypt.compare(candidatePassword, userPassword);
+// Add this method to update user profile
+userSchema.methods.updateProfile = function(updateData) {
+  const allowedUpdates = ['name', 'alternateMobile', 'address', 'dateOfBirth', 'gender'];
+  allowedUpdates.forEach(field => {
+    if (updateData[field] !== undefined) {
+      this[field] = updateData[field];
+    }
+  });
+  return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);
