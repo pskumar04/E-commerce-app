@@ -7,7 +7,7 @@ import CustomerProfile from './components/CustomerProfile';
 import ProductDetails from './components/ProductDetails';
 // import ProductDetail from './pages/ProductDetail';
 
-import config from './config';
+// import config from './config';
 import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
 
