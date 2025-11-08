@@ -45,7 +45,57 @@ export const AuthProvider = ({ children }) => {
     checkLoggedIn();
   }, []);
 
-  // Login function with better error handling
+  // ✅ FRONTEND Register function - KEEP THIS
+  const register = async (userData) => {
+    try {
+      console.log('🔍 [DEBUG] Registration attempt:', { ...userData, password: '***' });
+      
+      const response = await axios.post(`${config.apiUrl}/api/auth/register`, userData);
+      
+      // ✅ CHECK IF REGISTRATION WAS SUCCESSFUL
+      if (response.data.success) {
+        const { token, user } = response.data;
+        
+        if (!token) {
+          throw new Error('No token received from server');
+        }
+
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        setUser(user);
+        
+        console.log('✅ [DEBUG] Registration successful');
+        return { success: true };
+      } else {
+        // ✅ HANDLE BACKEND ERRORS (like duplicate email)
+        console.log('❌ [DEBUG] Backend registration failed:', response.data.message);
+        return { 
+          success: false, 
+          message: response.data.message || 'Registration failed' 
+        };
+      }
+      
+    } catch (error) {
+      console.error('❌ [DEBUG] Registration error:', error);
+      
+      // ✅ IMPROVED ERROR HANDLING
+      if (error.response?.data?.success === false) {
+        // Backend returned an error with success: false (like duplicate email)
+        console.log('❌ [DEBUG] Backend error response:', error.response.data);
+        return { 
+          success: false, 
+          message: error.response.data.message 
+        };
+      }
+      
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Registration failed. Please try again.' 
+      };
+    }
+  };
+
+  // ✅ FRONTEND Login function - KEEP THIS
   const login = async (email, password) => {
     try {
       console.log('Attempting login with:', { email });
@@ -105,32 +155,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register function
-  const register = async (userData) => {
-    try {
-      const response = await axios.post(`${config.apiUrl}/api/auth/register`, userData);
-      
-      const { token, user } = response.data;
-      
-      if (!token) {
-        throw new Error('No token received from server');
-      }
+  // ❌ DELETE THIS ENTIRE BACKEND ROUTE SECTION
+  /*
+  router.post('/register', async (req, res) => {
+    // ... all the backend code
+  });
+  */
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Registration error:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Registration failed' 
-      };
-    }
-  };
-
-  // Logout function
+  // ✅ FRONTEND Logout function - KEEP THIS
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
