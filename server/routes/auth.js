@@ -11,10 +11,10 @@ router.post('/register', async (req, res) => {
     
     const { name, email, password, role = 'customer' } = req.body;
 
-    // Validation
-    if (!name || !email || !password || !mobile) {
+    // ✅ FIXED: Removed 'mobile' from validation since it's not in your User model
+    if (!name || !email || !password) {
       return res.status(400).json({ 
-        message: 'Please provide name, email, password, and mobile number' 
+        message: 'Please provide name, email, and password' 
       });
     }
 
@@ -52,7 +52,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRE }
+      { expiresIn: process.env.JWT_EXPIRE || '30d' }
     );
 
     // Return user data (without password)
@@ -60,9 +60,7 @@ router.post('/register', async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      // mobile: user.mobile,
       role: user.role
-      // createdAt: user.createdAt
     };
 
     res.status(201).json({
@@ -86,7 +84,6 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     console.log('Login request:', req.body);
-    
     const { email, password } = req.body;
 
     // Validation
@@ -115,15 +112,13 @@ router.post('/login', async (req, res) => {
 
     // Create JWT token
     const token = jwt.sign(
-      // { id: user._id }, 
       { 
         id: user._id, 
         email: user.email,
         role: user.role 
       },
       process.env.JWT_SECRET || 'your-secret-key',
-      // { expiresIn: '30d' }
-      { expiresIn: process.env.JWT_EXPIRE }
+      { expiresIn: process.env.JWT_EXPIRE || '30d' }
     );
 
     // Return user data (without password)
@@ -131,13 +126,7 @@ router.post('/login', async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      mobile: user.mobile,
-      role: user.role,
-      alternateMobile: user.alternateMobile,
-      address: user.address,
-      dateOfBirth: user.dateOfBirth,
-      gender: user.gender,
-      createdAt: user.createdAt
+      role: user.role
     };
 
     res.json({
