@@ -63,7 +63,7 @@ app.post('/api/auth/register', (req, res) => {
 });
 
 // ✅ COMMENT OUT THE AUTH ROUTES TEMPORARILY
-// app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', require('./routes/auth'));
 
 // Other routes
 app.use('/api/products', require('./routes/products'));

@@ -80,71 +80,88 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// User login
-router.get('/login', async (req, res) => {
-  try {
-    console.log('Login request:', req.body);
-    const { email, password } = req.body;
-
-    // Validation
-    if (!email || !password) {
-      return res.status(400).json({ 
-        message: 'Please provide email and password' 
-      });
-    }
-
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ 
-        message: 'Invalid email or password' 
-      });
-    }
-
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid email or password' 
-      });
-    }
-
-    // Create JWT token
-    const token = jwt.sign(
-      { 
-        id: user._id, 
-        email: user.email,
-        role: user.role 
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: process.env.JWT_EXPIRE || '30d' }
-    );
-
-    // Return user data (without password)
-    const userResponse = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role
-    };
-
-    res.json({
-      success: true,
-      message: 'Login successful',
-      token,
-      user: userResponse
-    });
-
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Server error during login',
-      error: error.message 
-    });
-  }
+// Add this to auth.js - GET route for testing
+router.get('/login', (req, res) => {
+  res.json({ 
+    message: 'Auth routes are working! Use POST for actual login.',
+    endpoint: 'POST /api/auth/login',
+    status: 'OK'
+  });
 });
+
+// Also add a test route
+router.get('/test', (req, res) => {
+  res.json({ 
+    message: 'Auth routes are working perfectly!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// User login
+// router.post('/login', async (req, res) => {
+//   try {
+//     console.log('Login request:', req.body);
+//     const { email, password } = req.body;
+
+//     // Validation
+//     if (!email || !password) {
+//       return res.status(400).json({ 
+//         message: 'Please provide email and password' 
+//       });
+//     }
+
+//     // Find user by email
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(400).json({ 
+//         message: 'Invalid email or password' 
+//       });
+//     }
+
+//     // Check password
+//     const isPasswordValid = await bcrypt.compare(password, user.password);
+//     if (!isPasswordValid) {
+//       return res.status(400).json({ 
+//         success: false,
+//         message: 'Invalid email or password' 
+//       });
+//     }
+
+//     // Create JWT token
+//     const token = jwt.sign(
+//       { 
+//         id: user._id, 
+//         email: user.email,
+//         role: user.role 
+//       },
+//       process.env.JWT_SECRET || 'your-secret-key',
+//       { expiresIn: process.env.JWT_EXPIRE || '30d' }
+//     );
+
+//     // Return user data (without password)
+//     const userResponse = {
+//       _id: user._id,
+//       name: user.name,
+//       email: user.email,
+//       role: user.role
+//     };
+
+//     res.json({
+//       success: true,
+//       message: 'Login successful',
+//       token,
+//       user: userResponse
+//     });
+
+//   } catch (error) {
+//     console.error('Login error:', error);
+//     res.status(500).json({ 
+//       success: false,
+//       message: 'Server error during login',
+//       error: error.message 
+//     });
+//   }
+// });
 
 // Get user profile
 router.get('/profile', async (req, res) => {
