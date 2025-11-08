@@ -7,8 +7,40 @@ const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
+const checkSupplier = (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Access denied. No token provided.' 
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    
+    // ✅ CHECK IF USER IS SUPPLIER
+    if (decoded.role !== 'supplier') {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied. Only suppliers can access this dashboard.' 
+      });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({ 
+      success: false,
+      message: 'Invalid token.' 
+    });
+  }
+};
+
 // Get supplier dashboard statistics
-router.get('/dashboard', auth, async (req, res) => {
+router.get('/dashboard', checkSupplier, async (req, res) => {
   try {
     if (req.user.role !== 'supplier') {
       return res.status(403).json({ message: 'Only suppliers can access dashboard' });

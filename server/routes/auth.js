@@ -81,13 +81,13 @@ router.post('/register', async (req, res) => {
 });
 
 // Add this to auth.js - GET route for testing
-router.get('/login', (req, res) => {
-  res.json({ 
-    message: 'Auth routes are working! Use POST for actual login.',
-    endpoint: 'POST /api/auth/login',
-    status: 'OK'
-  });
-});
+// router.get('/login', (req, res) => {
+//   res.json({ 
+//     message: 'Auth routes are working! Use POST for actual login.',
+//     endpoint: 'POST /api/auth/login',
+//     status: 'OK'
+//   });
+// });
 
 // Also add a test route
 router.get('/test', (req, res) => {
@@ -98,70 +98,70 @@ router.get('/test', (req, res) => {
 });
 
 // User login
-// router.post('/login', async (req, res) => {
-//   try {
-//     console.log('Login request:', req.body);
-//     const { email, password } = req.body;
+router.post('/login', async (req, res) => {
+  try {
+    console.log('Login request:', req.body);
+    const { email, password } = req.body;
 
-//     // Validation
-//     if (!email || !password) {
-//       return res.status(400).json({ 
-//         message: 'Please provide email and password' 
-//       });
-//     }
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ 
+        message: 'Please provide email and password' 
+      });
+    }
 
-//     // Find user by email
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//       return res.status(400).json({ 
-//         message: 'Invalid email or password' 
-//       });
-//     }
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ 
+        message: 'Invalid email or password' 
+      });
+    }
 
-//     // Check password
-//     const isPasswordValid = await bcrypt.compare(password, user.password);
-//     if (!isPasswordValid) {
-//       return res.status(400).json({ 
-//         success: false,
-//         message: 'Invalid email or password' 
-//       });
-//     }
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid email or password' 
+      });
+    }
 
-//     // Create JWT token
-//     const token = jwt.sign(
-//       { 
-//         id: user._id, 
-//         email: user.email,
-//         role: user.role 
-//       },
-//       process.env.JWT_SECRET || 'your-secret-key',
-//       { expiresIn: process.env.JWT_EXPIRE || '30d' }
-//     );
+    // Create JWT token
+    const token = jwt.sign(
+      { 
+        id: user._id, 
+        email: user.email,
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: process.env.JWT_EXPIRE || '30d' }
+    );
 
-//     // Return user data (without password)
-//     const userResponse = {
-//       _id: user._id,
-//       name: user.name,
-//       email: user.email,
-//       role: user.role
-//     };
+    // Return user data (without password)
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
 
-//     res.json({
-//       success: true,
-//       message: 'Login successful',
-//       token,
-//       user: userResponse
-//     });
+    res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: userResponse
+    });
 
-//   } catch (error) {
-//     console.error('Login error:', error);
-//     res.status(500).json({ 
-//       success: false,
-//       message: 'Server error during login',
-//       error: error.message 
-//     });
-//   }
-// });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error during login',
+      error: error.message 
+    });
+  }
+});
 
 // Get user profile
 router.get('/profile', async (req, res) => {
@@ -170,17 +170,30 @@ router.get('/profile', async (req, res) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
+      return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
+        // ✅ SAFE USER RESPONSE (handle missing fields)
+    const userResponse = {
+      _id: user._id,
+      name: user.name || '',
+      email: user.email || '',
+      role: user.role || 'customer',
+      mobile: user.mobile || '',
+      alternateMobile: user.alternateMobile || '',
+      address: user.address || '',
+      dateOfBirth: user.dateOfBirth || '',
+      gender: user.gender || ''
+    };
 
-    res.json(user);
+    res.json({success: true,
+      user: userResponse});
   } catch (error) {
     console.error('Profile error:', error);
     res.status(500).json({ message: 'Server error' });
