@@ -30,37 +30,37 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ TEMPORARY TEST ROUTES - PUT THESE BEFORE OTHER ROUTES
-app.post('/api/auth/login', (req, res) => {
-  console.log('✅ Login API called with:', req.body);
+// app.post('/api/auth/login', (req, res) => {
+//   console.log('✅ Login API called with:', req.body);
   
-  res.json({
-    success: true,
-    message: 'Login successful!',
-    token: 'test_jwt_token_12345',
-    user: {
-      id: '1',
-      name: 'Test User',
-      email: req.body.email,
-      role: 'customer'
-    }
-  });
-});
+//   res.json({
+//     success: true,
+//     message: 'Login successful!',
+//     token: 'test_jwt_token_12345',
+//     user: {
+//       id: '1',
+//       name: 'Test User',
+//       email: req.body.email,
+//       role: 'customer'
+//     }
+//   });
+// });
 
-app.post('/api/auth/register', (req, res) => {
-  console.log('✅ Register API called with:', req.body);
+// app.post('/api/auth/register', (req, res) => {
+//   console.log('✅ Register API called with:', req.body);
   
-  res.json({
-    success: true,
-    message: 'Registration successful!',
-    token: 'test_jwt_token_12345',
-    user: {
-      id: '2',
-      name: req.body.name,
-      email: req.body.email,
-      role: req.body.role || 'customer'
-    }
-  });
-});
+//   res.json({
+//     success: true,
+//     message: 'Registration successful!',
+//     token: 'test_jwt_token_12345',
+//     user: {
+//       id: '2',
+//       name: req.body.name,
+//       email: req.body.email,
+//       role: req.body.role || 'customer'
+//     }
+//   });
+// });
 
 // ✅ COMMENT OUT THE AUTH ROUTES TEMPORARILY
 app.use('/api/auth', require('./routes/auth'));

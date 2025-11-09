@@ -98,6 +98,9 @@ router.get('/test', (req, res) => {
 });
 
 // User login
+// In your server/routes/auth.js, update the login function:
+
+// User login
 router.post('/login', async (req, res) => {
   try {
     console.log('Login request:', req.body);
@@ -106,6 +109,7 @@ router.post('/login', async (req, res) => {
     // Validation
     if (!email || !password) {
       return res.status(400).json({ 
+        success: false,
         message: 'Please provide email and password' 
       });
     }
@@ -113,19 +117,26 @@ router.post('/login', async (req, res) => {
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ 
-        message: 'Invalid email or password' 
-      });
-    }
-
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+      console.log('❌ Login failed: User not found with email:', email);
       return res.status(400).json({ 
         success: false,
         message: 'Invalid email or password' 
       });
     }
+
+    console.log('✅ User found:', user.email);
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.log('❌ Login failed: Invalid password for user:', user.email);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid email or password' 
+      });
+    }
+
+    console.log('✅ Password valid for user:', user.email);
 
     // Create JWT token
     const token = jwt.sign(
@@ -143,9 +154,16 @@ router.post('/login', async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      mobile: user.mobile || '',
+      alternateMobile: user.alternateMobile || '',
+      address: user.address || '',
+      dateOfBirth: user.dateOfBirth || '',
+      gender: user.gender || ''
     };
 
+    console.log('✅ Login successful for user:', user.email);
+    
     res.json({
       success: true,
       message: 'Login successful',
@@ -154,12 +172,28 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
     res.status(500).json({ 
       success: false,
       message: 'Server error during login',
       error: error.message 
     });
+  }
+});
+
+
+// Debug route to check all users (remove this in production)
+router.get('/debug-users', async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    console.log('All users in database:', users);
+    res.json({
+      totalUsers: users.length,
+      users: users
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Error fetching users' });
   }
 });
 

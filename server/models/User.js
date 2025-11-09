@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
-
-// const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -20,22 +19,20 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Password is required'],
     minlength: 6
   },
-  mobile: {
+  // ✅ CHANGED: Use 'phone' instead of 'mobile' to match authController
+  phone: {
     type: String,
-    required: [true, 'Mobile number is required'],
+    required: [true, 'Phone number is required'],
     trim: true
   },
-  alternateMobile: {
+  whatsapp: {
     type: String,
     default: '',
     trim: true
   },
   address: {
-    street: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    zipCode: { type: String, default: '' },
-    country: { type: String, default: 'India' }
+    type: String, // ✅ CHANGED: Make it a simple string to match authController
+    required: [true, 'Address is required']
   },
   dateOfBirth: {
     type: Date,
@@ -50,6 +47,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['customer', 'supplier', 'admin'],
     default: 'customer'
+  },
+  // Supplier specific field
+  logisticsName: {
+    type: String,
+    default: ''
   },
   // Add supplier ratings field
   supplierRatings: {
@@ -66,9 +68,22 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// ✅ ADD: Password hashing middleware
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// ✅ ADD: Password comparison method
+userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
 // Add this method to update user profile
 userSchema.methods.updateProfile = function(updateData) {
-  const allowedUpdates = ['name', 'alternateMobile', 'address', 'dateOfBirth', 'gender'];
+  const allowedUpdates = ['name', 'whatsapp', 'address', 'dateOfBirth', 'gender'];
   allowedUpdates.forEach(field => {
     if (updateData[field] !== undefined) {
       this[field] = updateData[field];
