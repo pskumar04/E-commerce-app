@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const UserSimple = require('./models/UserSimple'); // Add this import
 
 dotenv.config();
 
@@ -42,6 +43,59 @@ app.post('/api/debug-test', (req, res) => {
     phoneValue: req.body?.phone,
     allFields: Object.keys(req.body || {})
   });
+});
+
+app.post('/api/auth/simple-register', async (req, res) => {
+  try {
+    console.log('=== SIMPLE REGISTER TEST ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Phone field:', req.body.phone);
+    
+    const { name, email, phone, password } = req.body;
+    
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone is required in simple test'
+      });
+    }
+    
+    // Create user with simple model
+    const user = new UserSimple({
+      name,
+      email, 
+      phone,
+      password
+    });
+    
+    console.log('UserSimple object:', {
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      hasPhone: !!user.phone
+    });
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: 'Simple registration successful!',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      }
+    });
+    
+  } catch (error) {
+    console.error('Simple register error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Simple registration failed',
+      error: error.message
+    });
+  }
 });
 
 // MongoDB Connection
