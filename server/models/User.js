@@ -19,10 +19,9 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Password is required'],
     minlength: 6
   },
-  // ✅ FIXED: Phone field with proper validation
   phone: {
     type: String,
-    required: [true, 'Phone number is required'],
+    required: true,
     trim: true
   },
   whatsapp: {
@@ -31,20 +30,14 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   address: {
-    street: { type: String, default: '' },
-    city: { type: String, default: '' },
-    state: { type: String, default: '' },
-    zipCode: { type: String, default: '' },
-    country: { type: String, default: 'India' }
-  },
-  dateOfBirth: {
-    type: Date,
-    default: null
-  },
-  gender: {
-    type: String,
-    enum: ['male', 'female', 'other', 'prefer-not-to-say', ''],
-    default: ''
+    type: Object,
+    default: {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: 'India'
+    }
   },
   role: {
     type: String,
@@ -54,49 +47,21 @@ const userSchema = new mongoose.Schema({
   logisticsName: {
     type: String,
     default: ''
-  },
-  supplierRatings: {
-    average: { type: Number, default: 0 },
-    count: { type: Number, default: 0 },
-    reviews: [{
-      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-      rating: { type: Number, required: true, min: 1, max: 5 },
-      comment: { type: String, default: '' },
-      createdAt: { type: Date, default: Date.now }
-    }]
   }
 }, {
   timestamps: true
 });
 
-// Password hashing middleware
+// Password hashing
 userSchema.pre('save', async function(next) {
-  // Only hash the password if it's modified (or new)
   if (!this.isModified('password')) return next();
-  
-  try {
-    // Hash the password
-    this.password = await bcrypt.hash(this.password, 12);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
 });
 
-// Password comparison method
+// Password comparison
 userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
   return await bcrypt.compare(candidatePassword, userPassword);
-};
-
-// Update profile method
-userSchema.methods.updateProfile = function(updateData) {
-  const allowedUpdates = ['name', 'whatsapp', 'address', 'dateOfBirth', 'gender'];
-  allowedUpdates.forEach(field => {
-    if (updateData[field] !== undefined) {
-      this[field] = updateData[field];
-    }
-  });
-  return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);

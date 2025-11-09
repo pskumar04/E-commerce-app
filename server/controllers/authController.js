@@ -8,12 +8,11 @@ const generateToken = (userId) => {
 
 exports.registerCustomer = async (req, res) => {
   try {
-    console.log('=== REGISTER CUSTOMER START ===');
-    console.log('Full request body:', JSON.stringify(req.body, null, 2));
+    console.log('=== REGISTER START ===');
+    console.log('Request body:', req.body);
     
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
       return res.status(400).json({ 
         success: false,
         errors: errors.array() 
@@ -22,20 +21,13 @@ exports.registerCustomer = async (req, res) => {
 
     const { name, email, phone, whatsapp, address, password } = req.body;
 
-    console.log('📱 Phone from request:', phone);
-    console.log('📱 Type of phone:', typeof phone);
+    console.log('Phone from request:', phone);
 
-    // ✅ Check if phone exists and is valid
-    if (!phone || phone.trim() === '') {
-      console.log('❌ PHONE IS EMPTY OR UNDEFINED');
-      return res.status(400).json({
-        success: false,
-        message: 'Phone number is required'
-      });
-    }
-
+    // Make sure phone is not undefined
+    const userPhone = phone || '0000000000';
+    
     const existingUser = await User.findOne({ 
-      $or: [{ email }, { phone }] 
+      $or: [{ email }, { phone: userPhone }] 
     });
     
     if (existingUser) {
@@ -45,66 +37,18 @@ exports.registerCustomer = async (req, res) => {
       });
     }
 
-    // ✅ Create user object with explicit field assignment
-    const userData = {
+    const user = new User({
       name: name,
       email: email,
-      phone: String(phone).trim(), // Convert to string and trim
-      whatsapp: whatsapp || String(phone).trim(),
+      phone: userPhone,
+      whatsapp: whatsapp || userPhone,
       password: password,
-      role: 'customer'
-    };
+      role: 'customer',
+      address: address
+    });
 
-    // Add address
-    if (address && typeof address === 'object') {
-      userData.address = address;
-    } else {
-      userData.address = {
-        street: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        country: 'India'
-      };
-    }
+    console.log('User before save - Phone:', user.phone);
 
-    console.log('📝 User data being saved:', userData);
-    console.log('📝 Phone in userData:', userData.phone);
-    console.log('📝 Type of phone in userData:', typeof userData.phone);
-
-    // ✅ Create user instance
-    const user = new User(userData);
-
-    // ✅ Manual validation with detailed logging
-    console.log('🔍 Validating user before save...');
-    try {
-      await user.validate();
-      console.log('✅ User validation passed');
-    } catch (validationError) {
-      console.log('❌ User validation failed:');
-      console.log('   Validation errors:', validationError.errors);
-      console.log('   User object at time of validation:', {
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        hasPhone: !!user.phone
-      });
-      
-      const errorMessages = Object.values(validationError.errors).map(err => ({
-        field: err.path,
-        message: err.message,
-        value: err.value
-      }));
-      
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errorMessages
-      });
-    }
-
-    // ✅ Save user
-    console.log('💾 Saving user to database...');
     await user.save();
     console.log('✅ User saved successfully');
 
@@ -112,49 +56,28 @@ exports.registerCustomer = async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Customer registered successfully',
+      message: 'Registration successful!',
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role,
-        address: user.address
+        role: user.role
       }
     });
 
   } catch (error) {
-    console.error('💥 Registration error:', error);
-    
-    if (error.name === 'ValidationError') {
-      console.log('🔍 Detailed validation errors:');
-      Object.keys(error.errors).forEach(key => {
-        console.log(`   ${key}:`, error.errors[key]);
-      });
-      
-      const errors = Object.values(error.errors).map(err => ({
-        field: err.path,
-        message: err.message,
-        value: err.value
-      }));
-      
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors
-      });
-    }
+    console.error('Registration error:', error);
     
     res.status(500).json({ 
       success: false,
-      message: 'Server error during registration',
+      message: 'Registration failed',
       error: error.message 
     });
   }
 };
 
-// Keep your other functions as they are
 exports.registerSupplier = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -164,8 +87,10 @@ exports.registerSupplier = async (req, res) => {
 
     const { name, email, phone, whatsapp, address, logisticsName, password } = req.body;
 
+    const userPhone = phone || '0000000000';
+
     const existingUser = await User.findOne({ 
-      $or: [{ email }, { phone }] 
+      $or: [{ email }, { phone: userPhone }] 
     });
     
     if (existingUser) {
@@ -177,8 +102,8 @@ exports.registerSupplier = async (req, res) => {
     const user = new User({
       name,
       email,
-      phone,
-      whatsapp: whatsapp || phone,
+      phone: userPhone,
+      whatsapp: whatsapp || userPhone,
       address,
       password,
       role: 'supplier',
