@@ -27,18 +27,13 @@ app.use(express.json());
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// MongoDB Connection with better error handling
+// MongoDB Connection - SIMPLIFIED
 const connectDB = async () => {
   try {
     console.log('🔗 Attempting MongoDB connection...');
-    console.log('📝 MONGODB_URI exists:', !!process.env.MONGODB_URI);
+    console.log('📝 MONGODB_URI:', process.env.MONGODB_URI ? 'Exists' : 'Missing');
     
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s
-      socketTimeoutMS: 45000, // Close sockets after 45s
-    });
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
     
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.name}`);
@@ -47,7 +42,6 @@ const connectDB = async () => {
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
     console.error('💡 Please check your MONGODB_URI in environment variables');
-    console.error('🔧 Error details:', error);
     process.exit(1);
   }
 };
@@ -55,7 +49,7 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
-// Temporary test route (remove after testing)
+// Temporary test route
 app.post('/api/auth/test-login', (req, res) => {
   console.log('🔐 Test login called:', req.body);
   
@@ -74,7 +68,7 @@ app.post('/api/auth/test-login', (req, res) => {
   } else {
     res.status(401).json({
       success: false,
-      message: 'Invalid test credentials. Use email: pandurusatishkumar04@gmail.com, password: test123'
+      message: 'Invalid test credentials'
     });
   }
 });
@@ -111,20 +105,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Test route
-app.get('/api/test', (req, res) => {
-  res.json({ 
-    message: 'Backend is working!',
-    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
-  });
-});
-
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
 });
 
 // Handle unhandled promise rejections
