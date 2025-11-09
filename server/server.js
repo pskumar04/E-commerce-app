@@ -148,3 +148,105 @@ process.on('unhandledRejection', (err) => {
   console.log(err.name, err.message);
   process.exit(1);
 });
+
+
+// const express = require('express');
+// const cors = require('cors');
+// const dotenv = require('dotenv');
+
+// dotenv.config();
+
+// const app = express();
+
+// // Basic CORS
+// app.use(cors());
+// app.use(express.json());
+
+// // Simple health check
+// app.get('/api/health', (req, res) => {
+//   res.json({ 
+//     message: 'API is running!',
+//     status: 'healthy',
+//     timestamp: new Date().toISOString()
+//   });
+// });
+
+// // Simple test login (no database)
+// app.post('/api/auth/login', (req, res) => {
+//   console.log('Login attempt:', req.body);
+  
+//   const { email, password } = req.body;
+  
+//   // Simple hardcoded test
+//   if (email === 'pandurusatishkumar04@gmail.com' && password === '7013888595') {
+//     res.json({
+//       success: true,
+//       message: 'Login successful!',
+//       token: 'test_jwt_token_' + Date.now(),
+//       user: {
+//         id: 'user_1',
+//         name: 'SATISH KUMAR PANDURU',
+//         email: email,
+//         role: 'customer'
+//       }
+//     });
+//   } else {
+//     res.status(401).json({
+//       success: false,
+//       message: 'Invalid credentials'
+//     });
+//   }
+// });
+
+// // Simple test register (no database)
+// app.post('/api/auth/register', (req, res) => {
+//   console.log('Register attempt:', req.body);
+  
+//   const { name, email, phone, password } = req.body;
+  
+//   if (name && email && phone && password) {
+//     res.json({
+//       success: true,
+//       message: 'Registration successful!',
+//       token: 'test_jwt_token_' + Date.now(),
+//       user: {
+//         id: 'user_' + Date.now(),
+//         name: name,
+//         email: email,
+//         phone: phone,
+//         role: 'customer'
+//       }
+//     });
+//   } else {
+//     res.status(400).json({
+//       success: false,
+//       message: 'All fields are required'
+//     });
+//   }
+// });
+
+// // Handle all other routes
+// app.use('*', (req, res) => {
+//   res.status(404).json({
+//     success: false,
+//     message: 'Route not found'
+//   });
+// });
+
+// const PORT = process.env.PORT || 10000;
+
+// app.listen(PORT, () => {
+//   console.log(`🚀 Server is running on port ${PORT}`);
+//   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+// });
+
+// // Simple error handling
+// process.on('uncaughtException', (err) => {
+//   console.error('Uncaught Exception:', err);
+//   process.exit(1);
+// });
+
+// process.on('unhandledRejection', (err) => {
+//   console.error('Unhandled Rejection:', err);
+//   process.exit(1);
+// });
