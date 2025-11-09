@@ -11,11 +11,6 @@ exports.registerCustomer = async (req, res) => {
     console.log('=== REGISTER CUSTOMER START ===');
     console.log('Full request body:', JSON.stringify(req.body, null, 2));
     
-    // Log all fields received
-    console.log('All fields received:', Object.keys(req.body));
-    console.log('Phone field value:', req.body.phone);
-    console.log('Phone field type:', typeof req.body.phone);
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.log('Validation errors:', errors.array());
@@ -27,16 +22,17 @@ exports.registerCustomer = async (req, res) => {
 
     const { name, email, phone, whatsapp, address, password } = req.body;
 
-    // ✅ FIX: Ensure phone is properly handled
-    if (!phone) {
-      console.log('❌ PHONE IS MISSING IN REQUEST');
+    console.log('📱 Phone from request:', phone);
+    console.log('📱 Type of phone:', typeof phone);
+
+    // ✅ Check if phone exists and is valid
+    if (!phone || phone.trim() === '') {
+      console.log('❌ PHONE IS EMPTY OR UNDEFINED');
       return res.status(400).json({
         success: false,
         message: 'Phone number is required'
       });
     }
-
-    console.log('✅ Phone found:', phone);
 
     const existingUser = await User.findOne({ 
       $or: [{ email }, { phone }] 
@@ -49,40 +45,66 @@ exports.registerCustomer = async (req, res) => {
       });
     }
 
-    // ✅ FIX: Create user with proper phone assignment
+    // ✅ Create user object with explicit field assignment
     const userData = {
       name: name,
       email: email,
-      phone: phone, // Direct assignment
-      whatsapp: whatsapp || phone,
+      phone: String(phone).trim(), // Convert to string and trim
+      whatsapp: whatsapp || String(phone).trim(),
       password: password,
-      role: 'customer',
-      address: address || {
+      role: 'customer'
+    };
+
+    // Add address
+    if (address && typeof address === 'object') {
+      userData.address = address;
+    } else {
+      userData.address = {
         street: '',
         city: '',
         state: '',
         zipCode: '',
         country: 'India'
-      }
-    };
+      };
+    }
 
-    console.log('User data to save:', userData);
+    console.log('📝 User data being saved:', userData);
+    console.log('📝 Phone in userData:', userData.phone);
+    console.log('📝 Type of phone in userData:', typeof userData.phone);
 
+    // ✅ Create user instance
     const user = new User(userData);
 
-    // Test validation
+    // ✅ Manual validation with detailed logging
+    console.log('🔍 Validating user before save...');
     try {
       await user.validate();
       console.log('✅ User validation passed');
     } catch (validationError) {
-      console.log('❌ User validation failed:', validationError.errors);
+      console.log('❌ User validation failed:');
+      console.log('   Validation errors:', validationError.errors);
+      console.log('   User object at time of validation:', {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        hasPhone: !!user.phone
+      });
+      
+      const errorMessages = Object.values(validationError.errors).map(err => ({
+        field: err.path,
+        message: err.message,
+        value: err.value
+      }));
+      
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
-        errors: Object.values(validationError.errors).map(err => err.message)
+        errors: errorMessages
       });
     }
 
+    // ✅ Save user
+    console.log('💾 Saving user to database...');
     await user.save();
     console.log('✅ User saved successfully');
 
@@ -106,10 +128,17 @@ exports.registerCustomer = async (req, res) => {
     console.error('💥 Registration error:', error);
     
     if (error.name === 'ValidationError') {
+      console.log('🔍 Detailed validation errors:');
+      Object.keys(error.errors).forEach(key => {
+        console.log(`   ${key}:`, error.errors[key]);
+      });
+      
       const errors = Object.values(error.errors).map(err => ({
         field: err.path,
-        message: err.message
+        message: err.message,
+        value: err.value
       }));
+      
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
