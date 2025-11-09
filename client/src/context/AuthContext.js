@@ -117,64 +117,58 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ✅ FRONTEND Login function - KEEP THIS
-  const login = async (email, password) => {
-    try {
-      console.log('Attempting login with:', { email });
-      
-      const response = await axios.post(`${config.apiUrl}/api/auth/login`, {
-        email,
-        password
-      });
+// In your AuthContext.js, update the login function:
+// In your src/context/AuthContext.js, update the login function:
 
-      console.log('Login response:', response.data);
+const login = async (email, password) => {
+  try {
+    console.log('Attempting login with:', { email });
+    
+    const response = await axios.post(`${config.apiUrl}/api/auth/login`, {
+      email,
+      password
+    });
 
-      // Handle different response formats
-      let userData, token;
-      
-      if (response.data.user && response.data.token) {
-        // Standard format: { user, token }
-        userData = response.data.user;
-        token = response.data.token;
-      } else if (response.data._id) {
-        // Alternative format: user object with token
-        userData = response.data;
-        token = response.data.token || response.data.accessToken;
-      } else {
-        throw new Error('Invalid response format from server');
-      }
+    console.log('Login response:', response.data);
 
-      if (!token) {
-        throw new Error('No token received from server');
-      }
+    // ✅ FIXED: Check for success field
+    if (response.data.success && response.data.token && response.data.user) {
+      const { token, user } = response.data;
 
       // Store in localStorage
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(user));
+      setUser(user);
       
-      return { success: true, user: userData };
-    } catch (error) {
-      console.error('Login error details:', error);
+      console.log('✅ Login successful, user stored:', user.email);
       
-      let errorMessage = 'Login failed';
-      
-      if (error.response) {
-        // Server responded with error status
-        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
-      } else if (error.request) {
-        // Request was made but no response received
-        errorMessage = 'No response from server. Check if backend is running.';
-      } else {
-        // Something else happened
-        errorMessage = error.message;
-      }
-      
-      return { 
-        success: false, 
-        message: errorMessage 
-      };
+      return { success: true, user: user };
+    } else {
+      throw new Error(response.data.message || 'Login failed');
     }
-  };
+  } catch (error) {
+    console.error('❌ Login error details:', error);
+    
+    let errorMessage = 'Login failed';
+    
+    if (error.response?.data) {
+      errorMessage = error.response.data.message || `Server error: ${error.response.status}`;
+    } else if (error.request) {
+      errorMessage = 'No response from server. Check if backend is running.';
+    } else {
+      errorMessage = error.message;
+    }
+    
+    // Clear any invalid tokens
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    return { 
+      success: false, 
+      message: errorMessage 
+    };
+  }
+};
 
   // ❌ DELETE THIS ENTIRE BACKEND ROUTE SECTION
   /*

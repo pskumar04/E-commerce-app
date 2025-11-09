@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import config from '../config';
@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 const CustomerProfile = () => {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [profile, setProfile] = useState({
     name: '',
     email: '',
@@ -23,57 +24,161 @@ const CustomerProfile = () => {
     gender: ''
   });
 
-  useEffect(() => {
-    if (user) {
-      fetchUserProfile();
+  // Use refs to track if we've already loaded the profile
+  const hasLoadedProfile = useRef(false);
+  const toastShown = useRef(false);
+
+  // Get auth token with better error handling
+  const getAuthToken = () => {
+    try {
+      return localStorage.getItem('token');
+    } catch (error) {
+      console.error('Error getting token:', error);
+      return null;
     }
-  }, [user]);
+  };
+
+  useEffect(() => {
+    // Only fetch profile if we have a user and haven't loaded it yet
+    if (user && !hasLoadedProfile.current) {
+      fetchUserProfile();
+    } else if (!user) {
+      setProfileLoading(false);
+    }
+  }, [user]); // Only depend on user
 
   const fetchUserProfile = async () => {
+    // Prevent multiple simultaneous calls
+    if (hasLoadedProfile.current) {
+      return;
+    }
+
     try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
+      setProfileLoading(true);
+      hasLoadedProfile.current = true;
+      
+      const token = getAuthToken();
       
       if (!token) {
-        toast.error('Please login to view profile');
+        console.log('No token found, using context user data');
+        // Use data from AuthContext if available
+        if (user) {
+          setProfile({
+            name: user.name || '',
+            email: user.email || '',
+            mobile: user.mobile || '',
+            alternateMobile: user.alternateMobile || '',
+            address: user.address || {
+              street: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              country: 'India'
+            },
+            dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+            gender: user.gender || ''
+          });
+        }
+        setProfileLoading(false);
         return;
       }
 
+      console.log('Fetching profile from API...');
       const response = await axios.get(`${config.apiUrl}/api/auth/profile`, {
         headers: { 
           Authorization: `Bearer ${token}` 
-        }
-      });
-      
-      const userData = response.data;
-      
-      setProfile({
-        name: userData.name || '',
-        email: userData.email || '',
-        mobile: userData.mobile || '',
-        alternateMobile: userData.alternateMobile || '',
-        address: userData.address || {
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: 'India'
         },
-        dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth).toISOString().split('T')[0] : '',
-        gender: userData.gender || ''
+        timeout: 10000 // 10 second timeout
       });
+      
+      console.log('Profile API response:', response.data);
+      
+      if (response.data) {
+        const userData = response.data;
+        
+        setProfile({
+          name: userData.name || user.name || '',
+          email: userData.email || user.email || '',
+          mobile: userData.mobile || user.mobile || '',
+          alternateMobile: userData.alternateMobile || user.alternateMobile || '',
+          address: userData.address || user.address || {
+            street: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            country: 'India'
+          },
+          dateOfBirth: userData.dateOfBirth 
+            ? new Date(userData.dateOfBirth).toISOString().split('T')[0] 
+            : (user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : ''),
+          gender: userData.gender || user.gender || ''
+        });
+
+        // Update AuthContext with fresh data
+        updateUser({ ...user, ...userData });
+        
+        // Only show toast once and only if we successfully loaded from API
+        if (!toastShown.current) {
+          toast.success('Profile loaded successfully');
+          toastShown.current = true;
+        }
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
       
-      if (error.response?.status === 401) {
-        toast.error('Please login again');
-      } else if (error.response?.status === 404) {
-        toast.error('User profile not found');
+      // Reset the flag so we can retry if needed
+      hasLoadedProfile.current = false;
+      
+      // Use AuthContext data as fallback
+      if (user) {
+        console.log('Using AuthContext data as fallback');
+        setProfile({
+          name: user.name || '',
+          email: user.email || '',
+          mobile: user.mobile || '',
+          alternateMobile: user.alternateMobile || '',
+          address: user.address || {
+            street: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            country: 'India'
+          },
+          dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+          gender: user.gender || ''
+        });
+        
+        if (error.response?.status === 401) {
+          if (!toastShown.current) {
+            toast.error('Session expired. Please login again.');
+            toastShown.current = true;
+          }
+        } else if (error.response?.status === 404) {
+          if (!toastShown.current) {
+            toast.info('Using cached profile data');
+            toastShown.current = true;
+          }
+        } else {
+          if (!toastShown.current) {
+            toast.info('Using cached profile data. Some features may be limited.');
+            toastShown.current = true;
+          }
+        }
       } else {
-        toast.error('Failed to load profile. Please try again.');
+        if (error.response?.status === 401) {
+          toast.error('Please login to view your profile');
+        } else if (error.response?.status === 404) {
+          toast.error('Profile not found. Please contact support.');
+        } else if (error.code === 'ECONNABORTED') {
+          toast.error('Request timeout. Please check your connection.');
+        } else if (error.message === 'Network Error') {
+          toast.error('Network error. Please check your internet connection.');
+        } else {
+          toast.error('Failed to load profile. Using cached data.');
+        }
       }
     } finally {
-      setLoading(false);
+      setProfileLoading(false);
     }
   };
 
@@ -99,31 +204,72 @@ const CustomerProfile = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!profile.name.trim()) {
+      toast.error('Please enter your full name');
+      return;
+    }
+
+    if (!profile.email.trim()) {
+      toast.error('Please enter your email');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
+      
+      if (!token) {
+        toast.error('Please login to update your profile');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Updating profile with data:', profile);
+      
       const response = await axios.put(
         `${config.apiUrl}/api/auth/profile`, 
         profile,
         {
           headers: { 
-            Authorization: `Bearer ${token}` 
-          }
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
         }
       );
       
-      // Update user context with new name
-      updateUser({ ...user, name: profile.name });
+      console.log('Profile update response:', response.data);
+      
+      // Update user context with new data
+      if (response.data.user) {
+        updateUser({ ...user, ...response.data.user });
+      } else {
+        updateUser({ ...user, name: profile.name });
+      }
       
       toast.success('Profile updated successfully!');
+      
+      // Reset flags to allow reloading
+      hasLoadedProfile.current = false;
+      toastShown.current = false;
+      
     } catch (error) {
       console.error('Error updating profile:', error);
       
       if (error.response?.status === 401) {
-        toast.error('Please login again');
+        toast.error('Session expired. Please login again.');
+        // Clear invalid token
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error('Request timeout. Please try again.');
+      } else if (error.message === 'Network Error') {
+        toast.error('Network error. Please check your connection.');
       } else {
         toast.error('Failed to update profile. Please try again.');
       }
@@ -132,21 +278,16 @@ const CustomerProfile = () => {
     }
   };
 
-  // Rest of your component remains the same...
-  // [Keep all the JSX and other functions as they were]
-
   const handleChangePassword = async () => {
     const currentPassword = prompt('Enter current password:');
-    const newPassword = prompt('Enter new password:');
-    const confirmPassword = prompt('Confirm new password:');
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error('All fields are required');
+    if (!currentPassword) {
+      toast.error('Current password is required');
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
+    const newPassword = prompt('Enter new password:');
+    if (!newPassword) {
+      toast.error('New password is required');
       return;
     }
 
@@ -155,17 +296,78 @@ const CustomerProfile = () => {
       return;
     }
 
+    const confirmPassword = prompt('Confirm new password:');
+    if (!confirmPassword) {
+      toast.error('Please confirm your new password');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
     try {
+      const token = getAuthToken();
+      
+      if (!token) {
+        toast.error('Please login to change password');
+        return;
+      }
+
       await axios.put(`${config.apiUrl}/api/auth/change-password`, {
         currentPassword,
         newPassword
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
+      
       toast.success('Password changed successfully!');
     } catch (error) {
       console.error('Error changing password:', error);
       toast.error(error.response?.data?.message || 'Failed to change password');
     }
   };
+
+  // Show loading state
+  if (profileLoading) {
+    return (
+      <div style={{ 
+        padding: '2rem', 
+        maxWidth: '800px', 
+        margin: '0 auto',
+        minHeight: '80vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Loading your profile...</div>
+          <div>Please wait while we load your information</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if no user
+  if (!user) {
+    return (
+      <div style={{ 
+        padding: '2rem', 
+        maxWidth: '800px', 
+        margin: '0 auto',
+        minHeight: '80vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2>Please Login</h2>
+          <p>You need to be logged in to view your profile.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
@@ -193,7 +395,8 @@ const CustomerProfile = () => {
           </p>
         </div>
 
-        {/* Profile Form */}
+        {/* Profile Form - REST OF YOUR JSX REMAINS EXACTLY THE SAME */}
+        {/* ... (keep all your existing JSX code exactly as it was) ... */}
         <div style={{ padding: '2rem' }}>
           <form onSubmit={handleSubmit}>
             <div style={{ 
@@ -538,18 +741,19 @@ const CustomerProfile = () => {
                 disabled={loading}
                 style={{
                   padding: '1rem 2rem',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
                   fontWeight: '600',
                   fontSize: '1rem',
                   transition: 'all 0.3s ease',
-                  minWidth: '150px'
+                  minWidth: '150px',
+                  opacity: loading ? 0.7 : 1
                 }}
-                onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-                onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+                onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)')}
+                onMouseOut={(e) => !loading && (e.target.style.transform = 'translateY(0)')}
               >
                 {loading ? 'Updating...' : 'Update Profile'}
               </button>
