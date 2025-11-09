@@ -31,7 +31,7 @@ exports.registerCustomer = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ 
-        success: false, // ✅ ADD: success field
+        success: false,
         errors: errors.array() 
       });
     }
@@ -44,17 +44,22 @@ exports.registerCustomer = async (req, res) => {
     
     if (existingUser) {
       return res.status(400).json({ 
-        success: false, // ✅ ADD: success field
+        success: false,
         message: 'User with this email or phone already exists' 
       });
     }
 
+    // ✅ Convert address object to string if needed, or keep as object
+    const userAddress = typeof address === 'object' 
+      ? `${address.street}, ${address.city}, ${address.state} - ${address.zipCode}, ${address.country}`
+      : address;
+
     const user = new User({
       name,
       email,
-      phone,
+      phone, // ✅ Now matches User model
       whatsapp: whatsapp || phone,
-      address, // ✅ Now matches User model
+      address: userAddress, // ✅ Handle both object and string
       password,
       role: 'customer'
     });
@@ -68,7 +73,7 @@ exports.registerCustomer = async (req, res) => {
   } catch (error) {
     console.error('❌ Registration error:', error);
     res.status(500).json({ 
-      success: false, // ✅ ADD: success field
+      success: false,
       message: 'Server error during registration',
       error: error.message 
     });
@@ -82,7 +87,7 @@ exports.registerSupplier = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ 
-        success: false, // ✅ ADD: success field
+        success: false,
         errors: errors.array() 
       });
     }
@@ -95,17 +100,22 @@ exports.registerSupplier = async (req, res) => {
     
     if (existingUser) {
       return res.status(400).json({ 
-        success: false, // ✅ ADD: success field
+        success: false,
         message: 'User with this email or phone already exists' 
       });
     }
 
+    // ✅ Convert address object to string if needed
+    const userAddress = typeof address === 'object' 
+      ? `${address.street}, ${address.city}, ${address.state} - ${address.zipCode}, ${address.country}`
+      : address;
+
     const user = new User({
       name,
       email,
-      phone,
+      phone, // ✅ Now matches User model
       whatsapp: whatsapp || phone,
-      address, // ✅ Now matches User model
+      address: userAddress, // ✅ Handle both object and string
       password,
       role: 'supplier',
       logisticsName
@@ -120,7 +130,7 @@ exports.registerSupplier = async (req, res) => {
   } catch (error) {
     console.error('❌ Supplier registration error:', error);
     res.status(500).json({ 
-      success: false, // ✅ ADD: success field
+      success: false,
       message: 'Server error during supplier registration',
       error: error.message 
     });
