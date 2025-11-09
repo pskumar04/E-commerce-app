@@ -27,13 +27,24 @@ app.use(express.json());
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// MongoDB Connection - SIMPLIFIED
+// MongoDB Connection with detailed logging
 const connectDB = async () => {
   try {
     console.log('🔗 Attempting MongoDB connection...');
-    console.log('📝 MONGODB_URI:', process.env.MONGODB_URI ? 'Exists' : 'Missing');
+    console.log('📝 MONGODB_URI exists:', !!process.env.MONGODB_URI);
     
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI environment variable is missing');
+    }
+    
+    // Log first few characters of URI (for security, don't log full URI)
+    const uriPreview = process.env.MONGODB_URI.substring(0, 50) + '...';
+    console.log('📋 URI Preview:', uriPreview);
+    
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 30000, // 30 seconds timeout
+      socketTimeoutMS: 45000, // 45 seconds socket timeout
+    });
     
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.name}`);
@@ -41,7 +52,11 @@ const connectDB = async () => {
     return conn;
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
-    console.error('💡 Please check your MONGODB_URI in environment variables');
+    console.error('💡 Error details:', error);
+    console.error('🔧 Please check:');
+    console.error('   1. MONGODB_URI environment variable');
+    console.error('   2. MongoDB Atlas network access (0.0.0.0/0)');
+    console.error('   3. Database user credentials');
     process.exit(1);
   }
 };
@@ -49,31 +64,7 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
-// Temporary test route
-app.post('/api/auth/test-login', (req, res) => {
-  console.log('🔐 Test login called:', req.body);
-  
-  if (req.body.email === 'pandurusatishkumar04@gmail.com' && req.body.password === 'test123') {
-    res.json({
-      success: true,
-      message: 'Test login successful!',
-      token: 'test_jwt_token_' + Date.now(),
-      user: {
-        id: 'test_user_1',
-        name: 'Test User',
-        email: req.body.email,
-        role: 'customer'
-      }
-    });
-  } else {
-    res.status(401).json({
-      success: false,
-      message: 'Invalid test credentials'
-    });
-  }
-});
-
-// Actual routes
+// Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
@@ -83,7 +74,7 @@ app.use('/api/order-requests', require('./routes/orderRequests'));
 app.use('/api/cart', require('./routes/cart'));
 
 // Health check route
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   const dbStatus = mongoose.connection.readyState;
   let dbMessage = 'Unknown';
   
@@ -94,15 +85,53 @@ app.get('/api/health', (req, res) => {
     case 3: dbMessage = 'Disconnecting'; break;
   }
   
+  // Test database connection
+  let dbTest = 'Not tested';
+  if (dbStatus === 1) {
+    try {
+      await mongoose.connection.db.admin().ping();
+      dbTest = 'Working';
+    } catch (error) {
+      dbTest = 'Failed: ' + error.message;
+    }
+  }
+  
   res.json({ 
     message: 'Happy Cart API is running!',
     timestamp: new Date().toISOString(),
     database: {
       status: dbMessage,
-      readyState: dbStatus
+      readyState: dbStatus,
+      test: dbTest
     },
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Simple test route without database
+app.post('/api/auth/simple-login', (req, res) => {
+  console.log('🔐 Simple login called:', req.body);
+  
+  const { email, password } = req.body;
+  
+  if (email && password) {
+    res.json({
+      success: true,
+      message: 'Simple login API is working!',
+      user: {
+        id: 'simple_test_user',
+        name: 'Test User',
+        email: email,
+        role: 'customer'
+      },
+      token: 'simple_test_token_' + Date.now()
+    });
+  } else {
+    res.status(400).json({
+      success: false,
+      message: 'Email and password required'
+    });
+  }
 });
 
 const PORT = process.env.PORT || 10000;
@@ -110,6 +139,7 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: https://ecommerce-backend-9aps.onrender.com/api/health`);
 });
 
 // Handle unhandled promise rejections

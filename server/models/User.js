@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Password is required'],
     minlength: 6
   },
-  // ✅ CHANGED: Use 'phone' instead of 'mobile' to match authController
+  // ✅ CHANGED: Use 'phone' instead of 'mobile' to match frontend
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
@@ -30,9 +30,13 @@ const userSchema = new mongoose.Schema({
     default: '',
     trim: true
   },
+  // ✅ CHANGED: Make address an object to match frontend
   address: {
-    type: String, // ✅ CHANGED: Make it a simple string to match authController
-    required: [true, 'Address is required']
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    zipCode: { type: String, default: '' },
+    country: { type: String, default: 'India' }
   },
   dateOfBirth: {
     type: Date,
@@ -68,7 +72,7 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// ✅ ADD: Password hashing middleware
+// Password hashing middleware
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
@@ -76,12 +80,12 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// ✅ ADD: Password comparison method
+// Password comparison method
 userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-// Add this method to update user profile
+// Update profile method
 userSchema.methods.updateProfile = function(updateData) {
   const allowedUpdates = ['name', 'whatsapp', 'address', 'dateOfBirth', 'gender'];
   allowedUpdates.forEach(field => {
