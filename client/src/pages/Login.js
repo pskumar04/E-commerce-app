@@ -10,7 +10,7 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, user } = useAuth(); // ✅ Add user to see current state
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -24,10 +24,16 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
+    console.log('Login form submitted'); // ✅ Add logging
+    
     const result = await login(formData.email, formData.password);
+    
+    console.log('Login result:', result); // ✅ Add logging
+    console.log('Current user after login:', user); // ✅ Add logging
     
     if (result.success) {
       toast.success('Login successful!');
+      console.log('Navigating to home page...'); // ✅ Add logging
       navigate('/');
     } else {
       toast.error(result.message);

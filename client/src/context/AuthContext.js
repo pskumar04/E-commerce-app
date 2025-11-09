@@ -131,18 +131,29 @@ const login = async (email, password) => {
 
     console.log('Login response:', response.data);
 
-    // ✅ FIXED: Check for success field
-    if (response.data.success && response.data.token && response.data.user) {
-      const { token, user } = response.data;
+    // Check if login was successful
+    if (response.data.token && response.data.user) {
+      const userData = response.data.user;
+      const token = response.data.token;
+
+      // Validate user data
+      if (!userData._id || !userData.email) {
+        throw new Error('Invalid user data received from server');
+      }
 
       // Store in localStorage
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
+      localStorage.setItem('user', JSON.stringify(userData));
       
-      console.log('✅ Login successful, user stored:', user.email);
+      // ✅ IMPORTANT: Update user state immediately
+      setUser(userData);
       
-      return { success: true, user: user };
+      // ✅ Set authorization header for future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      console.log('✅ Login successful, user stored:', userData.email);
+      
+      return { success: true, user: userData };
     } else {
       throw new Error(response.data.message || 'Login failed');
     }
@@ -151,17 +162,21 @@ const login = async (email, password) => {
     
     let errorMessage = 'Login failed';
     
-    if (error.response?.data) {
-      errorMessage = error.response.data.message || `Server error: ${error.response.status}`;
+    if (error.response) {
+      // Server responded with error status
+      errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
     } else if (error.request) {
+      // Request was made but no response received
       errorMessage = 'No response from server. Check if backend is running.';
     } else {
+      // Something else happened
       errorMessage = error.message;
     }
     
     // Clear any invalid tokens
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setUser(null);
     
     return { 
       success: false, 
